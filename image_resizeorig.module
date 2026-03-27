@@ -98,6 +98,7 @@ function image_resizeorig_mass_resize_form($form, $form_state) {
     '#default_value' => 1600,
     '#requred' => TRUE,
   );
+  // exclude mime types or paths or...? feasible?
   $form['actions']['#type'] = 'actions';
   $form['actions']['submit'] = array(
     '#type' => 'submit',
@@ -176,6 +177,7 @@ function _image_resizeorig_mass_update_batch_process($fids, $maxwidth, &$context
  */
 function _image_resizeorig_mass_update_batch_finished() {
   if ($success) {
+    // is there a way to figure out, if something actually got resized? That way its misleading...
     backdrop_set_message(t('The update has been performed.'));
   }
   else {
