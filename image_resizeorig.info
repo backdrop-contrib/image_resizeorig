@@ -1,0 +1,6 @@
+type = module
+name = Image Resize Original
+description = @todo
+backdrop = 1.x
+
+dependencies[] = image

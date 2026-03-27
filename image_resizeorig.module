@@ -1,0 +1,184 @@
+<?php
+/**
+ * @file
+ */
+
+/**
+ * Implements hook_entity_presave().
+ */
+function image_resizeorig_entity_presave($entity, $type) {
+  if ($entity->isNew() || $type != 'file') {
+    return;
+  }
+  // Keep original timestamp if custom property is set.
+  if (isset($entity->keepTimestamp)) {
+    $original = $entity->original;
+    $entity->timestamp = $original->timestamp;
+  }
+}
+
+/**
+ * Custom...
+ */
+function _image_resizeorig_resize_image(File $file, $maxwidth) {
+  $image = image_load($file->uri);
+  image_scale($image, $maxwidth);
+  image_save($image, $file->uri);
+  $file->keepTimestamp = TRUE;
+  $file->save();// hook fires...
+}
+
+/**
+ * Check file type, mime, dimension and resize if necessary.
+ */
+function image_resizeorig_evaluate_file($fid, $maxwidth = 1600) {
+  if ($file = file_load($fid)) {
+    if ($file->type != 'image') {
+      return;
+    }
+    $mime = $file->filemime;
+    if ($mime != 'image/png' && $mime != 'image/jpeg' && $mime != 'image/webp') {
+      return;
+    }
+    if ($file->width <= $maxwidth) {
+      return;
+    }
+    _image_resizeorig_resize_image($file, $maxwidth);
+  }
+}
+
+/**
+ * Fetch candidates from file_managed.
+ *
+ * We can not use "width" from file_metadata, as that's serialized, so we just
+ * skip over small file sizes here.
+ */
+function image_resizeorig_fetch_candidate_fids() {
+  $mime_types = array(
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+  );
+  $fids = db_select('file_managed', 'fm')
+    ->fields('fm', array('fid'))
+    ->condition('type', 'image')
+    ->condition('filemime', $mime_types, 'IN')
+    ->condition('filesize', 300000, '>')// magic number... @todo
+    ->execute()
+    ->fetchCol();
+  return $fids;
+}
+
+// hook menu (page)
+/**
+ * Implements hook_menu().
+ */
+function image_resizeorig_menu() {
+  $items = array();
+  $items['admin/content/image-resize-massupdate'] = array(
+    'title' => 'Mass resize images',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('image_resizeorig_mass_resize_form'),
+    'access arguments' => array('bypass file access'),
+  );
+  return $items;
+}
+
+/**
+ * Form callback...
+ */
+function image_resizeorig_mass_resize_form($form, $form_state) {
+  $form = array();
+  $form['maxwidth'] = array(
+    '#type' => 'number',
+    '#title' => 'max width',
+    '#min' => 500,
+    '#max' => 3000,
+    '#default_value' => 1600,
+    '#requred' => TRUE,
+  );
+  $form['actions']['#type'] = 'actions';
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update'),
+    //'#validate' => array(),
+    '#submit' => array('image_resizeorig_mass_resize_form_submit'),
+  );
+  return $form;
+}
+
+/**
+ *
+ */
+function image_resizeorig_mass_resize_form_submit($form, &$form_state) {
+  $fids = image_resizeorig_fetch_candidate_fids();
+  $maxwidth = $form_state['values']['maxwidth'];
+  //confirm?
+  image_resizeorig_mass_update($fids, $maxwidth);
+  // redirect to admin/content/files?
+  $form_state['redirect'] = 'admin/content/files';
+}
+
+/**
+ *
+ */
+function image_resizeorig_mass_update($fids, $maxwidth) {
+  if (count($fids) > 10) {
+    $batch = array(
+      'operations' => array(
+        array('_image_resizeorig_mass_update_batch_process', array(
+          $fids,
+          $maxwidth)
+        )
+      ),
+      'finished' => '_image_resizeorig_mass_update_batch_finished',
+      'title' => t('Processing'),
+      'progress_message' => '',
+      'error_message' => t('The update has encountered an error.'),
+    );
+  }
+  else {
+    foreach ($fids as $fid) {
+      image_resizeorig_evaluate_file($fid, $maxwidth);
+    }
+    backdrop_set_message(t('The update has been performed.'));
+  }
+}
+
+/**
+ * Process callback for the batch.
+ */
+function _image_resizeorig_mass_update_batch_process($fids, $maxwidth, &$context) {
+  if (!isset($context['sandbox']['progress'])) {
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['max'] = count($fids);
+    $context['sandbox']['fids'] = $fids;
+  }
+
+  // Process files by groups of 5.
+  $count = min(5, count($context['sandbox']['nodes']));
+  for ($i = 1; $i <= $count; $i++) {
+    $fid = array_shift($context['sandbox']['fids']);
+    image_resizeorig_evaluate_file($fid, $maxwidth);
+    $context['sandbox']['progress']++;
+  }
+
+  // Inform the batch engine that we are not finished, and provide an estimation
+  // of the completion level we reached.
+  if ($context['sandbox']['progress'] != $context['sandbox']['max']) {
+    $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
+  }
+}
+
+/**
+ * Set a message.
+ */
+function _image_resizeorig_mass_update_batch_finished() {
+  if ($success) {
+    backdrop_set_message(t('The update has been performed.'));
+  }
+  else {
+    backdrop_set_message(t('An error occurred and processing did not complete.'), 'error');
+  }
+}
