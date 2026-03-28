@@ -106,9 +106,13 @@ function image_resizeorig_menu() {
  */
 function image_resizeorig_mass_resize_form($form, $form_state) {
   $form = array();
+  $info = array();
+  $info[] = t('Resize original images to free some disk space.');
+  $info[] = t('When resizing huge amounts of very large images, processing may take a while.');
+  $info[] = t('This action cannot be undone.');
   $form['intro'] = array(
     '#type' => 'help',
-    '#markup' => t('Resize original images to free some disk space. This action cannot be undone.'),
+    '#markup' => implode('<br>', $info),
   );
   $form['maxwidth'] = array(
     '#type' => 'number',
