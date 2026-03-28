@@ -144,7 +144,7 @@ function image_resizeorig_mass_update($fids, $maxwidth) {
   else {
     $file_fids = array();
     foreach ($fids as $fid) {
-      $processed  = image_resizeorig_evaluate_file($fid, $maxwidth);// @todo evaluate true/false
+      $processed  = image_resizeorig_evaluate_file($fid, $maxwidth);
       if ($processed) {
         $file_fids[] = $fid;
       }
