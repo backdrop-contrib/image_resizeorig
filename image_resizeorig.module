@@ -18,26 +18,46 @@ function image_resizeorig_entity_presave($entity, $type) {
 }
 
 /**
- * Custom...
+ * Custom callback to actually resize the image.
+ *
+ * @param File $file
+ *   The File entity.
+ * @param string $maxwidth
+ *   Width to scale the image down to.
  */
 function _image_resizeorig_resize_image(File $file, $maxwidth) {
   $image = image_load($file->uri);
   image_scale($image, $maxwidth);
   image_save($image, $file->uri);
   $file->keepTimestamp = TRUE;
-  $file->save();// hook fires...
+  // Saving the file updates metadata and also fires hook_entity_presave().
+  $file->save();
 }
 
 /**
  * Check file type, mime, dimension and resize if necessary.
+ *
+ * @param string $fid
+ *   Numeric File ID as string.
+ * @param string $maxwidth
+ *   Number of pixels, as string.
+ *
+ * @return bool
+ *   Whether the file needed processing or not.
  */
-function image_resizeorig_evaluate_file($fid, $maxwidth = 1600) {
+function image_resizeorig_evaluate_file($fid, $maxwidth) {
   if ($file = file_load($fid)) {
     if ($file->type != 'image') {
       return FALSE;
     }
-    $mime = $file->filemime;// @todo in_array, helper func..., or form item?
-    if ($mime != 'image/png' && $mime != 'image/jpeg' && $mime != 'image/webp') {
+    $possible_mimes = array(
+      'image/jpeg',
+      'image/png',
+      'image/webp'
+    );
+    $mime = $file->filemime;
+    // Just in case.
+    if (!in_array($mime, $possible_mimes)) {
       return FALSE;
     }
     if ($file->width <= $maxwidth) {
@@ -55,12 +75,7 @@ function image_resizeorig_evaluate_file($fid, $maxwidth = 1600) {
  * We can not use "width" from file_metadata, as that's serialized, so we just
  * skip over small file sizes here.
  */
-function image_resizeorig_fetch_candidate_fids() {
-  $mime_types = array(
-    'image/png',
-    'image/jpeg',
-    'image/webp',
-  );
+function image_resizeorig_fetch_candidate_fids(array $mime_types) {
   $fids = db_select('file_managed', 'fm')
     ->fields('fm', array('fid'))
     ->condition('type', 'image')
@@ -71,7 +86,6 @@ function image_resizeorig_fetch_candidate_fids() {
   return $fids;
 }
 
-// hook menu (page)
 /**
  * Implements hook_menu().
  */
@@ -88,45 +102,62 @@ function image_resizeorig_menu() {
 }
 
 /**
- * Form callback...
+ * Form callback on admin/content/image-resize-massupdate.
  */
 function image_resizeorig_mass_resize_form($form, $form_state) {
   $form = array();
   $form['maxwidth'] = array(
     '#type' => 'number',
-    '#title' => 'max width',
+    '#title' => t('Max width'),
     '#min' => 500,
     '#max' => 3000,
     '#default_value' => 1600,
-    '#requred' => TRUE,
+    '#required' => TRUE,
+    '#field_suffix' => 'px',
+    '#description' => t('Images wider than this will get scaled down.'),
   );
-  // exclude mime types or paths or...? feasible?
+  $form['mimetypes'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Mime types'),
+    '#options' => array(
+      'image/jpeg' => 'JPEG',
+      'image/png' => 'PNG',
+      'image/webp' => 'WEBP',
+    ),
+    '#default_value' => array('image/jpeg'),
+    '#description' => t('Caution, PNG sometimes end up with a larger file size after scaling.'),
+    '#required' => TRUE,
+  );
   $form['actions']['#type'] = 'actions';
   $form['actions']['submit'] = array(
     '#type' => 'submit',
-    '#value' => t('Update'),
-    //'#validate' => array(),
+    '#value' => t('Submit'),
     '#submit' => array('image_resizeorig_mass_resize_form_submit'),
   );
   return $form;
 }
 
 /**
- *
+ * Submit callback for image_resizeorig_mass_resize_form().
  */
 function image_resizeorig_mass_resize_form_submit($form, &$form_state) {
-  $fids = image_resizeorig_fetch_candidate_fids();
+  $mime_types = array_filter($form_state['values']['mimetypes']);
+  $fids = image_resizeorig_fetch_candidate_fids(array_keys($mime_types));
   $maxwidth = $form_state['values']['maxwidth'];
-  //confirm?
+  // @todo confirm form or not?
   image_resizeorig_mass_update($fids, $maxwidth);
-  // redirect to admin/content/files?
   $form_state['redirect'] = 'admin/content/files';
 }
 
 /**
+ * Run mass update in batches or loop, depending on count.
  *
+ * @param array $fids
+ *   Array of File IDs.
+ * @param string $maxwidth
+ *   Number of pixels to resize larger images to.
  */
-function image_resizeorig_mass_update($fids, $maxwidth) {
+function image_resizeorig_mass_update(array $fids, $maxwidth) {
   if (count($fids) > 10) {
     $batch = array(
       'operations' => array(
@@ -140,6 +171,7 @@ function image_resizeorig_mass_update($fids, $maxwidth) {
       'progress_message' => '',
       'error_message' => t('The update has encountered an error.'),
     );
+    batch_set($batch);
   }
   else {
     $file_fids = array();
@@ -166,7 +198,7 @@ function _image_resizeorig_mass_update_batch_process($fids, $maxwidth, &$context
   }
 
   // Process files by groups of 5.
-  $count = min(5, count($context['sandbox']['nodes']));
+  $count = min(5, count($context['sandbox']['fids']));
   for ($i = 1; $i <= $count; $i++) {
     $fid = array_shift($context['sandbox']['fids']);
     $processed = image_resizeorig_evaluate_file($fid, $maxwidth);
@@ -185,7 +217,7 @@ function _image_resizeorig_mass_update_batch_process($fids, $maxwidth, &$context
 }
 
 /**
- * Set a message.
+ * Set a message after batch processing.
  */
 function _image_resizeorig_mass_update_batch_finished($success, $results, $operations) {
   if ($success) {
