@@ -106,6 +106,10 @@ function image_resizeorig_menu() {
  */
 function image_resizeorig_mass_resize_form($form, $form_state) {
   $form = array();
+  $form['intro'] = array(
+    '#type' => 'help',
+    '#markup' => t('Resize original images to free some disk space. This action cannot be undone.'),
+  );
   $form['maxwidth'] = array(
     '#type' => 'number',
     '#title' => t('Max width'),
@@ -125,7 +129,7 @@ function image_resizeorig_mass_resize_form($form, $form_state) {
       'image/webp' => 'WEBP',
     ),
     '#default_value' => array('image/jpeg'),
-    '#description' => t('Caution, PNG sometimes end up with a larger file size after scaling.'),
+    '#description' => t('Caution, PNG can sometimes end up with a larger file size after scaling.'),
     '#required' => TRUE,
   );
   $form['actions']['#type'] = 'actions';
