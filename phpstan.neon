@@ -1,0 +1,10 @@
+parameters:
+  level: 5
+  treatPhpDocTypesAsCertain: false
+  scanDirectories:
+    - ../../core
+  fileExtensions:
+    - php
+    - module
+    - inc
+    - install
