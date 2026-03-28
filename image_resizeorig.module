@@ -34,17 +34,19 @@ function _image_resizeorig_resize_image(File $file, $maxwidth) {
 function image_resizeorig_evaluate_file($fid, $maxwidth = 1600) {
   if ($file = file_load($fid)) {
     if ($file->type != 'image') {
-      return;
+      return FALSE;
     }
-    $mime = $file->filemime;
+    $mime = $file->filemime;// @todo in_array, helper func..., or form item?
     if ($mime != 'image/png' && $mime != 'image/jpeg' && $mime != 'image/webp') {
-      return;
+      return FALSE;
     }
     if ($file->width <= $maxwidth) {
-      return;
+      return FALSE;
     }
     _image_resizeorig_resize_image($file, $maxwidth);
+    return TRUE;
   }
+  return FALSE;
 }
 
 /**
@@ -140,10 +142,16 @@ function image_resizeorig_mass_update($fids, $maxwidth) {
     );
   }
   else {
+    $file_fids = array();
     foreach ($fids as $fid) {
-      image_resizeorig_evaluate_file($fid, $maxwidth);
+      $processed  = image_resizeorig_evaluate_file($fid, $maxwidth);// @todo evaluate true/false
+      if ($processed) {
+        $file_fids[] = $fid;
+      }
     }
     backdrop_set_message(t('The update has been performed.'));
+    $message = format_plural(count($file_fids), '1 item needed processing.', '@count items needed processing.');
+    backdrop_set_message($message);
   }
 }
 
@@ -161,7 +169,11 @@ function _image_resizeorig_mass_update_batch_process($fids, $maxwidth, &$context
   $count = min(5, count($context['sandbox']['nodes']));
   for ($i = 1; $i <= $count; $i++) {
     $fid = array_shift($context['sandbox']['fids']);
-    image_resizeorig_evaluate_file($fid, $maxwidth);
+    $processed = image_resizeorig_evaluate_file($fid, $maxwidth);
+    // Store result for a message in the finished callback.
+    if ($processed) {
+      $context['results'][] = $fid;
+    }
     $context['sandbox']['progress']++;
   }
 
@@ -175,10 +187,11 @@ function _image_resizeorig_mass_update_batch_process($fids, $maxwidth, &$context
 /**
  * Set a message.
  */
-function _image_resizeorig_mass_update_batch_finished() {
+function _image_resizeorig_mass_update_batch_finished($success, $results, $operations) {
   if ($success) {
-    // is there a way to figure out, if something actually got resized? That way its misleading...
     backdrop_set_message(t('The update has been performed.'));
+    $message = format_plural(count($results), '1 item needed processing.', '@count items needed processing.');
+    backdrop_set_message($message);
   }
   else {
     backdrop_set_message(t('An error occurred and processing did not complete.'), 'error');
