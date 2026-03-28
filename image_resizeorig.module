@@ -53,7 +53,7 @@ function image_resizeorig_evaluate_file($fid, $maxwidth) {
     $possible_mimes = array(
       'image/jpeg',
       'image/png',
-      'image/webp'
+      'image/webp',
     );
     $mime = $file->filemime;
     // Just in case.
@@ -80,7 +80,7 @@ function image_resizeorig_fetch_candidate_fids(array $mime_types) {
     ->fields('fm', array('fid'))
     ->condition('type', 'image')
     ->condition('filemime', $mime_types, 'IN')
-    ->condition('filesize', 300000, '>')// magic number... @todo
+    ->condition('filesize', 300000, '>')// @todo magic number.
     ->execute()
     ->fetchCol();
   return $fids;
@@ -163,12 +163,10 @@ function image_resizeorig_mass_resize_form_submit($form, &$form_state) {
  */
 function image_resizeorig_mass_update(array $fids, $maxwidth) {
   if (count($fids) > 10) {
+    $params = array($fids, $maxwidth);
     $batch = array(
       'operations' => array(
-        array('_image_resizeorig_mass_update_batch_process', array(
-          $fids,
-          $maxwidth)
-        )
+        array('_image_resizeorig_mass_update_batch_process', $params),
       ),
       'finished' => '_image_resizeorig_mass_update_batch_finished',
       'title' => t('Processing'),
