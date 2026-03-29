@@ -28,11 +28,13 @@ function image_resizeorig_entity_presave($entity, $type) {
  */
 function _image_resizeorig_resize_image(File $file, $maxwidth) {
   $image = image_load($file->uri);
-  image_scale($image, $maxwidth);
-  image_save($image, $file->uri);
-  $file->keepTimestamp = TRUE;
-  // Saving the file updates metadata and also fires hook_entity_presave().
-  $file->save();
+  if ($image) {
+    image_scale($image, $maxwidth);
+    image_save($image, $file->uri);
+    $file->keepTimestamp = TRUE;
+    // Saving the file updates metadata and also fires hook_entity_presave().
+    $file->save();
+  }
 }
 
 /**
