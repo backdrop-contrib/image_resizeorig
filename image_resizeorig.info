@@ -1,6 +1,6 @@
 type = module
 name = Image Resize Original
-description = @todo
+description = Utility module to resize original images previously uploaded to your site.
 backdrop = 1.x
 
 dependencies[] = image
