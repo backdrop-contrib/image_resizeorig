@@ -2,5 +2,8 @@ type = module
 name = Image Resize Original
 description = Utility module to resize original images previously uploaded to your site.
 backdrop = 1.x
+tags[] = Images
+tags[] = Utility
+maintainers[indigoxela] = indigoxela
 
 dependencies[] = image
