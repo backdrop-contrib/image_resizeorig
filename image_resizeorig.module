@@ -25,6 +25,9 @@ function image_resizeorig_entity_presave($entity, $type) {
  *   The File entity.
  * @param string $maxwidth
  *   Width to scale the image down to.
+ *
+ * @return bool
+ *   True in case of success, false in case of broken image.
  */
 function _image_resizeorig_resize_image(File $file, $maxwidth) {
   $image = image_load($file->uri);
@@ -34,7 +37,9 @@ function _image_resizeorig_resize_image(File $file, $maxwidth) {
     $file->keepTimestamp = TRUE;
     // Saving the file updates metadata and also fires hook_entity_presave().
     $file->save();
+    return TRUE;
   }
+  return FALSE;
 }
 
 /**
@@ -66,8 +71,7 @@ function image_resizeorig_evaluate_file($fid, $maxwidth) {
     if ($file->width <= $maxwidth) {
       return FALSE;
     }
-    _image_resizeorig_resize_image($file, $maxwidth);
-    return TRUE;
+    return _image_resizeorig_resize_image($file, $maxwidth);
   }
   return FALSE;
 }
