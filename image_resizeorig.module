@@ -60,7 +60,7 @@ function image_resizeorig_evaluate_file($fid, $maxwidth) {
     );
     $mime = $file->filemime;
     // Just in case.
-    if (!in_array($mime, $possible_mimes)) {
+    if (!in_array($mime, $possible_mimes) || !isset($file->width)) {
       return FALSE;
     }
     if ($file->width <= $maxwidth) {
