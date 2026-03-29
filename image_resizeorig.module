@@ -89,7 +89,7 @@ function image_resizeorig_fetch_candidate_fids(array $mime_types) {
     ->fields('fm', array('fid'))
     ->condition('type', 'image')
     ->condition('filemime', $mime_types, 'IN')
-    ->condition('filesize', 300000, '>')// @todo magic number.
+    ->condition('filesize', 400000, '>')
     ->execute()
     ->fetchCol();
   return $fids;
@@ -161,7 +161,6 @@ function image_resizeorig_mass_resize_form_submit($form, &$form_state) {
   $mime_types = array_filter($form_state['values']['mimetypes']);
   $fids = image_resizeorig_fetch_candidate_fids(array_keys($mime_types));
   $maxwidth = $form_state['values']['maxwidth'];
-  // @todo confirm form or not?
   image_resizeorig_mass_update($fids, $maxwidth);
   $form_state['redirect'] = 'admin/content/files';
 }
