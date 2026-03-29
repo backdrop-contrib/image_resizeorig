@@ -1,6 +1,7 @@
 <?php
 /**
  * @file
+ * Hooks and functions for Image Resize Original.
  */
 
 /**
@@ -74,6 +75,12 @@ function image_resizeorig_evaluate_file($fid, $maxwidth) {
  *
  * We can not use "width" from file_metadata, as that's serialized, so we just
  * skip over small file sizes here.
+ *
+ * @param array $mime_types
+ *   Array of mime types like "image/jpeg".
+ *
+ * @return array
+ *   Array of File entity IDs.
  */
 function image_resizeorig_fetch_candidate_fids(array $mime_types) {
   $fids = db_select('file_managed', 'fm')
@@ -195,8 +202,15 @@ function image_resizeorig_mass_update(array $fids, $maxwidth) {
 
 /**
  * Process callback for the batch.
+ *
+ * @param array $fids
+ *   Array of File entity IDs.
+ * @param string $maxwidth
+ *   Max width to resize images to if necessary.
+ * @param array $context
+ *   An array of contextual key/values, provided by reference.
  */
-function _image_resizeorig_mass_update_batch_process($fids, $maxwidth, &$context) {
+function _image_resizeorig_mass_update_batch_process(array $fids, $maxwidth, array &$context) {
   if (!isset($context['sandbox']['progress'])) {
     $context['sandbox']['progress'] = 0;
     $context['sandbox']['max'] = count($fids);
@@ -224,8 +238,13 @@ function _image_resizeorig_mass_update_batch_process($fids, $maxwidth, &$context
 
 /**
  * Set a message after batch processing.
+ *
+ * @param bool $success
+ *   Whether the batch mass update operation succeeded.
+ * @param array $results
+ *   Array of File entity IDs that actually got processed.
  */
-function _image_resizeorig_mass_update_batch_finished($success, $results, $operations) {
+function _image_resizeorig_mass_update_batch_finished($success, array $results) {
   if ($success) {
     backdrop_set_message(t('The update has been performed.'));
     $message = format_plural(count($results), '1 item needed processing.', '@count items needed processing.');
