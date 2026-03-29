@@ -38,6 +38,20 @@ If you actually _need_ those high resolutions, for example for purchased
 downloads, then better don't use this module, as it will resize all huge
 images from managed files.
 
+### What it does
+
+This module resizes the original images in your files folder and also
+updates metadata in the database, so the file size and width/height of
+images match the actual values.
+
+It keeps the original "changed" timestamp, though.
+
+### When you're done
+
+After running the job on admin/content/image-resize-massupdate you can
+safely uninstall this module. It's only useful for this one thing.
+
+
 ## Installation
 
 Install this module using the official 
