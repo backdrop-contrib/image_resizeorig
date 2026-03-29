@@ -15,8 +15,9 @@ photos, they slowly eat up lots of disk space.
 If such resolutions aren't ever displayed on your site, anyway - because
 you're using smaller image derivatives (image styles) for display - this is
 just wasted space.
+
 You can and should set maximum dimensions for fields in image field settings,
-but that only applies to newly uploaded files.
+but that only applies to newly uploaded files, not existing ones.
 
 So far, there was no way to resize previously uploaded images retrospectively.
 
@@ -25,7 +26,7 @@ Well - now there is.
 ### When this module's useful
 
 If you have thousands of existing images, resolutions of 6000x4000px or
-more, each of those images with file sizes of 8MB or more, this sums up.
+higher, each of those images has a file size of 8MB or more, this sums up.
 Resizing the originals can free several GB of space.
 
 ### When this module won't help
@@ -33,7 +34,7 @@ Resizing the originals can free several GB of space.
 If the main disk space hogs are videos or documents (like PDF), resizing
 some images won't free much space.
 
-If you actually need those high resolutions, for example for purchased
+If you actually _need_ those high resolutions, for example for purchased
 downloads, then better don't use this module, as it will resize all huge
 images from managed files.
 
