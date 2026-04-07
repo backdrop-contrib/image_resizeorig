@@ -68,12 +68,43 @@ function image_resizeorig_evaluate_file($fid, $maxwidth) {
     if (!in_array($mime, $possible_mimes) || !isset($file->width)) {
       return FALSE;
     }
+    // Safety guard against out-of-memory fatal error.
+    $pixelcount = $file->width * $file->height;
+    if ($pixelcount > _image_resizeorig_max_pixels()) {
+      return FALSE;
+    }
+    // Nothing to do.
     if ($file->width <= $maxwidth) {
       return FALSE;
     }
     return _image_resizeorig_resize_image($file, $maxwidth);
   }
   return FALSE;
+}
+
+/**
+ * Estimate how many pixels an image can have to not exhaust available memory.
+ *
+ * @return int
+ *   Maximum number of pixels to safely handle.
+ */
+function _image_resizeorig_max_pixels() {
+  $max_pixel_count = &backdrop_static(__FUNCTION__);
+  if (!isset($max_pixel_count)) {
+    $memory_limit = ini_get('memory_limit');
+    if ($memory_limit == -1) {
+      // Just to return a high number for the unlikely case.
+      $max_pixel_count = 1024 * 1024 * 1024;
+    }
+    else {
+      $memory_limit_bytes = parse_size($memory_limit);
+      // Leave some MB for other tasks.
+      $available_bytes = $memory_limit_bytes - 20 * 1024 * 1024;
+      // Assumptions: 3 color channels, factor 1.8.
+      $max_pixel_count = $available_bytes / (3 * 1.8);
+    }
+  }
+  return (int) $max_pixel_count;
 }
 
 /**
