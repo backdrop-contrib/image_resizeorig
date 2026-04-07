@@ -115,16 +115,18 @@ function _image_resizeorig_max_pixels() {
  *
  * @param array $mime_types
  *   Array of mime types like "image/jpeg".
+ * @param int $min_size
+ *   Minimum size in bytes.
  *
  * @return array
  *   Array of File entity IDs.
  */
-function image_resizeorig_fetch_candidate_fids(array $mime_types) {
+function image_resizeorig_fetch_candidate_fids(array $mime_types, $min_size) {
   $fids = db_select('file_managed', 'fm')
     ->fields('fm', array('fid'))
     ->condition('type', 'image')
     ->condition('filemime', $mime_types, 'IN')
-    ->condition('filesize', 400000, '>')
+    ->condition('filesize', $min_size, '>')
     ->execute()
     ->fetchCol();
   return $fids;
@@ -180,6 +182,22 @@ function image_resizeorig_mass_resize_form($form, $form_state) {
     '#description' => t('Caution, PNG can sometimes end up with a larger file size after scaling.'),
     '#required' => TRUE,
   );
+  $form['minsize'] = array(
+    '#type' => 'select',
+    '#title' => t('Minimum file size'),
+    '#description' => t('Only consider file sizes bigger than that.'),
+    '#options' => array(
+      '524288' => '0.5',
+      '1048576' => '1',
+      '2097152' => '2',
+      '3145728' => '3',
+      '4194304' => '4',
+      '5242880' => '5',
+    ),
+    '#default_value' => '1048576',
+    '#field_suffix' => 'MB',
+    '#required' => TRUE,
+  );
   $form['actions']['#type'] = 'actions';
   $form['actions']['submit'] = array(
     '#type' => 'submit',
@@ -194,7 +212,8 @@ function image_resizeorig_mass_resize_form($form, $form_state) {
  */
 function image_resizeorig_mass_resize_form_submit($form, &$form_state) {
   $mime_types = array_filter($form_state['values']['mimetypes']);
-  $fids = image_resizeorig_fetch_candidate_fids(array_keys($mime_types));
+  $min_size = (int) $form_state['values']['minsize'];
+  $fids = image_resizeorig_fetch_candidate_fids(array_keys($mime_types), $min_size);
   $maxwidth = $form_state['values']['maxwidth'];
   image_resizeorig_mass_update($fids, $maxwidth);
   $form_state['redirect'] = 'admin/content/files';
